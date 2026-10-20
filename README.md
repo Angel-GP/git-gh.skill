@@ -35,44 +35,48 @@ git-gh/
 
 ## 安装
 
+**唯一安装目标：全局 skill 目录 `$env:DSH_HOME\skills\git-gh`（未设置 `DSH_HOME` 时 `$HOME\.dsh\skills\git-gh`）。不支持项目级安装。**
+
 ### Agent 一句话安装
 
-对 agent 说：**“把 `https://github.com/Angel-GP/git-gh.skill.git` 克隆到 `$env:DSH_HOME\skills\git-gh`（未设置时 `$HOME\.dsh\skills\git-gh`），然后运行 `start.bat --bootstrap`。”**
+对 agent 说：**“把 `https://github.com/Angel-GP/git-gh.skill.git` 克隆到 `$env:DSH_HOME\skills\git-gh`（未设置时 `$HOME\.dsh\skills\git-gh`）。”**
 
 等价的 PowerShell 命令：
 
 ```powershell
 $dst = if ($env:DSH_HOME) { Join-Path $env:DSH_HOME 'skills\git-gh' } else { Join-Path $HOME '.dsh\skills\git-gh' }
 git clone https://github.com/Angel-GP/git-gh.skill.git $dst
-& "$dst\start.bat" --bootstrap
+```
+
+不需要再手动运行 `start.bat --bootstrap`。首次加载 skill 时，Agent 会按 `SKILL.md` 1.0 的规则自动执行：
+
+```text
+start.bat --bootstrap
+→ 创建 home\ 目录树
+→ 校验隔离环境
+→ 无密钥时生成专用密钥并输出公钥
 ```
 
 默认用 HTTPS，是因为它不需要预先配置 SSH 密钥，别人拿到就能装。只有在已经配置好 GitHub SSH key、或仓库是私有且你使用 SSH 认证时，才把地址换成 `git@github.com:Angel-GP/git-gh.skill.git`。
 
-### 方式 A：用户级安装（推荐）
+### 手动安装 / 更新
+
+`install.ps1` 也只安装到全局 skill 目录，不接受项目级目标：
 
 ```powershell
+# 首次安装
 powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
+
+# 覆盖更新
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Force
 ```
 
-默认目标：`$env:DSH_HOME\skills\git-gh`（未设置 `DSH_HOME` 时为 `%USERPROFILE%\.dsh\skills\git-gh`）。安装后 DSH 会自动发现，直接 `/git-gh` 或让 agent 使用即可。
-
-覆盖更新：
-
-```powershell
-.\install.ps1 -Force
-```
-
-`home\` 不会被复制、覆盖或删除，已有凭据和 SSH 密钥保留在目标目录。
-
-### 方式 B：项目级
-
-把整个 `git-gh` 目录放到项目的 `.dsh\skills\git-gh`（或 `.agents\skills\git-gh`）。项目根目录是最近的 `.git` 祖先；没有 `.git` 时是当前工作目录。
+`home\` 不会被复制、覆盖或删除，已有凭据和 SSH 密钥保留在目标目录。安装后 DSH 会自动发现，直接 `/git-gh` 或让 agent 使用即可。
 
 ## 使用
 
 ```powershell
-# 首次加载 / 新会话：第一条命令必须是 bootstrap
+# 首次加载时 Agent 会自动执行以下 bootstrap，无需用户手动运行
 # 创建 home 目录树 -> 校验隔离环境 -> 无密钥时生成并输出公钥
 & ".\start.bat" --bootstrap
 

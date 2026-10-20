@@ -44,6 +44,8 @@ Get-ChildItem -Path "$env:DSH_HOME\skills", ".dsh\skills" -Filter start.bat -Rec
 
 ### 1.0 首次加载：必须先启动 start.bat，再自动准备密钥
 
+**安装位置固定为全局 skill 目录 `$env:DSH_HOME\skills\git-gh`（未设置时 `$HOME\.dsh\skills\git-gh`）。不支持项目级安装。** 安装完成后不需要用户手动初始化；首次加载时 Agent 按本节自动执行 bootstrap。
+
 DSH 加载 skill 时只会注入本文件的指令，**不会自动执行 `.bat`**。因此本 skill 明确规定：
 
 > 每次新会话第一次使用、或首次安装后，解析 `$Skill` 路径之后，**第一条实际执行的命令必须是 `start.bat --bootstrap`**。它会先创建 `home\` 目录树，再校验隔离环境，最后在无密钥时自动生成密钥并输出公钥。失败则停止并报告，不得直接用系统 git/gh 兜底。
@@ -178,7 +180,7 @@ HTTPS 地址格式：`https://github.com/<owner>/<repo>.git`
 
 ### 3.4 首次配置与分享给他人
 
-分享 skill 前必须排除 `home\`（私钥、gh token）。对方拿到后，首次加载按 1.0 自动执行：
+分享 skill 前必须排除 `home\`（私钥、gh token）。对方只需把仓库克隆到全局目录 `$env:DSH_HOME\skills\git-gh`，首次加载按 1.0 自动执行（不需要项目级安装，也不需要手动初始化）：
 
 ```powershell
 & "$Skill\start.bat" --bootstrap
