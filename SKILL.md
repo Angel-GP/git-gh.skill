@@ -449,29 +449,29 @@ tag 固定 `vX.Y.Z`；不使用 `v1.2`、`1.2.3`、`release-1.2.3`。
 & "$Skill\start.bat" git push origin vX.Y.Z
 ```
 
-### 8.5 打包 zip（GitHub Actions，tag 触发）
+### 8.5 打包并发布（GitHub Actions，tag 触发）
 
 推送 `vX.Y.Z` tag 后，`.github/workflows/package.yml` 会自动：
 
 - checkout 该 tag
 - 打包 `git-gh-vX.Y.Z.zip`（排除 `.git` 和 `home`）
 - 生成 `.sha256` 校验文件
-- 上传为 Actions artifact
+- 上传 Actions artifact
+- 使用 `GITHUB_TOKEN` 创建 GitHub Release，并把 zip 和 `.sha256` 作为 Release 附件
 
 检查运行：
 
 ```powershell
 & "$Skill\start.bat" gh run list --workflow package.yml --limit 5
 & "$Skill\start.bat" gh run view <run-id>
+& "$Skill\start.bat" gh release view vX.Y.Z --json url,name,tagName,isDraft,isPrerelease
 ```
 
-artifact 在 Actions run 页面下载。打包由 Actions 完成，不需要本地 zip，也不需要本地 gh 登录。
+打包和发布由 Actions 完成，不需要本地 zip，也不需要本地 gh 登录。`git push` tag 只负责触发 Actions，不会直接在 git 协议层创建 Release。
 
-注意：`git push` tag 只会触发 Actions，不会直接创建 GitHub Release；Release 是 GitHub API 对象。
+### 8.6 手动创建 GitHub Release（仅 workflow 缺失/失败时）
 
-### 8.6 创建 GitHub Release（L2，需同意）
-
-仅 GitHub 仓库可用：
+仅 GitHub 仓库可用，且必须先取得用户同意：
 
 ```powershell
 & "$Skill\start.bat" gh release create vX.Y.Z --verify-tag --title "vX.Y.Z" --notes-file ".git\gitskill-release-notes.md"

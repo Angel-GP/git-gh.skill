@@ -11,7 +11,7 @@ on:
         default: 'v1.0.0'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   package:
@@ -56,3 +56,23 @@ jobs:
             git-gh-*.zip
             git-gh-*.zip.sha256
           if-no-files-found: error
+
+      - name: Ensure release notes
+        shell: pwsh
+        run: |
+          $notes = "release-notes/$env:PACKAGE_VERSION.md"
+          if (-not (Test-Path $notes)) {
+            "# $env:PACKAGE_VERSION`n`nSee commit history." | Set-Content $notes -Encoding utf8
+          }
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.PACKAGE_VERSION }}
+          name: ${{ env.PACKAGE_VERSION }}
+          body_path: release-notes/${{ env.PACKAGE_VERSION }}.md
+          files: git-gh-*
+          draft: false
+          prerelease: false
+          overwrite_files: true
