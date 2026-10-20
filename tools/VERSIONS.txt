@@ -1,0 +1,27 @@
+git-gh portable tools
+======================
+
+Git for Windows
+  version : 2.56.0.windows.2
+  archive : PortableGit-2.56.0.2-64-bit.7z.exe
+  source  : https://github.com/git-for-windows/git/releases/tag/v2.56.0.windows.2
+  sha256  : 075e158ef8e1f0ab80b347e245405d3eca735c2dc88fd8e032e137d0ca61f61b
+  layout  : tools/git/cmd/git.exe, tools/git/ucrt64, tools/git/usr
+
+GitHub CLI
+  version : 2.102.0
+  archive : gh_2.102.0_windows_amd64.zip
+  source  : https://github.com/cli/cli/releases/tag/v2.102.0
+  sha256  : ae64e556ecc240b200f7eba60d550e4bb60d78e860e69dd88c449405b86067f4
+  layout  : tools/gh/bin/gh.exe
+
+Extracted on 2026-10-20. Both archives were verified against the SHA256
+values above before extraction. The tools are unmodified; see
+../THIRD_PARTY_NOTICES.md and the LICENSE files in each tool directory.
+
+To update:
+  1. Download the new archive from the official release page.
+  2. Verify its SHA256.
+  3. Replace tools/git or tools/gh (keep the same directory layout).
+  4. Update this file.
+  5. Run: start.bat --check
