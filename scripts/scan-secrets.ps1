@@ -10,6 +10,8 @@
   Scan modified and untracked files in the working tree (default).
 .PARAMETER Staged
   Scan the content that is currently staged (git index).
+.PARAMETER Tracked
+  Scan all tracked files from the working tree (useful in CI).
 .PARAMETER Paths
   Scan specific files or directories.
 .PARAMETER Message
@@ -26,6 +28,7 @@
 param(
     [Parameter(ParameterSetName = 'Worktree')][switch]$Worktree,
     [Parameter(ParameterSetName = 'Staged')][switch]$Staged,
+    [Parameter(ParameterSetName = 'Tracked')][switch]$Tracked,
     [Parameter(ParameterSetName = 'Paths')][string[]]$Paths,
     [Parameter(ParameterSetName = 'Message')][string]$Message,
     [Parameter(ParameterSetName = 'MessageFile')][string]$MessageFile,
@@ -278,6 +281,18 @@ function Get-StagedFiles {
     return $files
 }
 
+function Get-TrackedFiles {
+    param([string]$RepoRoot)
+    $result = Invoke-GitCapture -Arguments @('ls-files') -WorkingDirectory $RepoRoot
+    if ($result.ExitCode -ne 0) { throw 'git ls-files failed.' }
+    $files = New-Object System.Collections.ArrayList
+    foreach ($line in $result.Output) {
+        $path = Unquote-GitPath $line
+        if ($path) { [void]$files.Add($path) }
+    }
+    return $files
+}
+
 function Scan-BranchName {
     param([string]$Name)
     if ([string]::IsNullOrWhiteSpace($Name) -or $Name -eq 'HEAD') { return }
@@ -334,6 +349,9 @@ try {
         }
         elseif ($mode -eq 'Staged') {
             $files = Get-StagedFiles -RepoRoot $repoRoot
+        }
+        elseif ($mode -eq 'Tracked') {
+            $files = Get-TrackedFiles -RepoRoot $repoRoot
         }
         else {
             $files = Get-WorktreeFiles -RepoRoot $repoRoot

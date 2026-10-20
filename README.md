@@ -12,6 +12,9 @@ git-gh/
 ├─ install.ps1              # 安装/更新到 <DSH_HOME>\skills\git-gh
 ├─ README.md
 ├─ THIRD_PARTY_NOTICES.md
+├─ .github/
+│  └─ workflows/
+│     └─ validate.yml       # push/PR 校验：环境、脚本语法、必需文件、密钥扫描
 ├─ home/                    # 运行时使用：凭据、SSH、Git 配置（凭据不随技能分发）
 │  ├─ .gitconfig
 │  ├─ gh/                   # GH_CONFIG_DIR
@@ -83,6 +86,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 
 # 扫描
 & ".\start.bat" powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\scan-secrets.ps1" -Worktree
+& ".\start.bat" powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\scan-secrets.ps1" -Staged
+& ".\start.bat" powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\scan-secrets.ps1" -Tracked
 
 # 交互式 shell（需要手动 gh auth login 时）
 .\start.bat
@@ -116,6 +121,32 @@ SSH 不是匿名协议：`git@github.com:...` 会先以你的 GitHub 账号认�
 ```
 
 确认公钥已添加到**你自己的 GitHub 账号**，而不是只作为某个仓库的 deploy key。没有权限的私有仓库，SSH 和 HTTPS 都无法拉取，需要仓库管理员授权。
+
+### 推送与 CI
+
+标准流程：
+
+```text
+修改 → 密钥扫描 → 展示 diff → 确认 → commit → 确认 → push → CI 通过 → release
+```
+
+本仓库自带 `.github/workflows/validate.yml`，在 push/PR 时执行：
+
+- `start.bat --check`
+- `scripts/check-env.ps1`
+- 所有 PowerShell 脚本语法解析
+- 必需文件检查
+- `scripts/scan-secrets.ps1 -Tracked`（扫描已跟踪文件，自动跳过 tools/home）
+
+推送后检查：
+
+```powershell
+& ".\start.bat" gh run list --commit <sha> --limit 5
+& ".\start.bat" gh run view <run-id>
+& ".\start.bat" gh run view <run-id> --log-failed
+```
+
+CI 失败时停止后续发布，不要自动改代码或重推；先看失败 job 再决定。仓库没有 workflow 时，推送完成不等于 CI 通过，应明确说明并建议添加 workflow。
 
 ## 分享给他人 / 首次添加密钥
 

@@ -1,0 +1,67 @@
+name: validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: windows-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Check portable environment
+        shell: cmd
+        run: start.bat --check
+
+      - name: Verify isolated environment
+        shell: cmd
+        run: start.bat powershell -NoProfile -ExecutionPolicy Bypass -File scripts\check-env.ps1
+
+      - name: Parse PowerShell scripts
+        shell: pwsh
+        run: |
+          $failed = $false
+          $files = @(Get-ChildItem -Path scripts -Filter *.ps1 -File) + @(Get-Item install.ps1)
+          foreach ($file in $files) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($file.FullName, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) {
+              $failed = $true
+              Write-Host "::error file=$($file.Name)::$($errors[0].Message)"
+            }
+          }
+          if ($failed) { exit 1 }
+          Write-Host "All PowerShell scripts parsed."
+
+      - name: Check required files
+        shell: pwsh
+        run: |
+          $required = @(
+            'SKILL.md',
+            'start.bat',
+            'setup-auth.bat',
+            'scripts\scan-secrets.ps1',
+            'tools\git\cmd\git.exe',
+            'tools\gh\bin\gh.exe'
+          )
+          $missing = @($required | Where-Object { -not (Test-Path -LiteralPath $_) })
+          if ($missing.Count -gt 0) {
+            $missing | ForEach-Object { Write-Host "::error::Missing required file: $_" }
+            exit 1
+          }
+
+      - name: Scan tracked files for secrets
+        shell: pwsh
+        run: .\scripts\scan-secrets.ps1 -Tracked -RepoPath .

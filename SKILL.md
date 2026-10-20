@@ -331,7 +331,7 @@ refactor(core)!: drop Node 16 support
 BREAKING CHANGE: minimum runtime is now Node 18.
 ```
 
-## 7. 推送与强制推送
+## 7. 推送、CI 与强制推送
 
 ### 7.1 普通推送（L2，需同意）
 
@@ -349,7 +349,33 @@ BREAKING CHANGE: minimum runtime is now Node 18.
 & "$Skill\start.bat" git log --oneline origin/<branch>..HEAD
 ```
 
-### 7.2 强制推送（默认禁止；二次确认）
+### 7.2 推送后检查 CI（必须）
+
+推送成功后，如果仓库存在 `.github/workflows/*`，必须只读检查本次 commit 的 CI 结果：
+
+```powershell
+& "$Skill\start.bat" gh run list --commit <sha> --limit 5
+& "$Skill\start.bat" gh run view <run-id>
+& "$Skill\start.bat" gh run view <run-id> --log-failed
+```
+
+处理规则：
+
+- **成功**：报告 workflow 名称、run id、结论；再进行 release 等后续动作。
+- **失败**：停止后续发布/推送；报告失败的 job 和日志摘要；不要自动改代码、自动重推或自动修 CI，先询问用户。
+- **仓库没有 workflow**：明确告知“没有 CI”，不要伪造 run；建议添加 `.github/workflows/validate.yml`。
+- **gh 未登录**：不要读取 token；给出 GitHub Actions 页面链接或让用户登录后重试。
+- CI 只做验证，不运行 `setup-auth`、不读取 `home\`、不写入仓库、不接触密钥。
+
+标准推送流程固定为：
+
+```text
+修改 → 密钥扫描 → 展示 diff → 用户确认 → commit → 用户确认 → push → CI 通过 → release
+```
+
+本仓库自带 `.github/workflows/validate.yml`：push/PR 时运行 `start.bat --check`、`check-env.ps1`、PowerShell 语法解析、必需文件检查和 `scan-secrets.ps1 -Tracked`。
+
+### 7.3 强制推送（默认禁止；二次确认）
 
 只有用户明确要求时才讨论。优先 `--force-with-lease`，禁止使用 `-f` 简写。
 
@@ -485,6 +511,7 @@ SSH 排查常用只读命令：
 2. 暂存区（`scan-secrets.ps1 -Staged`）。
 3. 拟用 commit message（`-MessageFile`）。
 4. 当前分支名（`-Branch <name>`）。
+5. CI 使用 `-Tracked` 扫描所有已跟踪文件；推送后必须确认 CI 通过（见 7.2）。
 
 识别到私钥头、GitHub/GitLab/AWS/OpenAI/Slack/Google 等 Token 特征、URL 内嵌凭据、JWT、`Bearer` Token 时：**直接拦截提交**。只报 `规则 + 文件:行号`，不报原文，不把命中内容写进聊天、日志或 commit message。
 
@@ -549,7 +576,7 @@ home/gh/
 | `setup-auth.bat` | 首次生成/检查密钥的便捷入口（仍调用 start.bat） | 写内部 `.ssh` |
 | `scripts/check-env.ps1` | 校验 HOME/GH_CONFIG_DIR/tool 路径 | 否 |
 | `scripts/diagnose.ps1` | 版本、配置来源、remote、gh 状态、SSH 文件（只列名） | 否 |
-| `scripts/scan-secrets.ps1` | 扫描 worktree/staged/message/branch；退出码 2=拦截，3=需复核 | 否 |
+| `scripts/scan-secrets.ps1` | 扫描 worktree/staged/tracked/message/branch；退出码 2=拦截，3=需复核 | 否 |
 | `scripts/setup-auth.ps1` | `Ensure` 自动生成/输出公钥；`Check`/`Login` | 写内部 `.ssh` |
 | `scripts/validate-commit-msg.ps1` | 校验 Conventional Commits 格式与 type | 否 |
 | `scripts/release-notes.ps1` | 从 Conventional Commits 生成详细 release notes | 写本地 notes 文件 |
@@ -579,6 +606,7 @@ home/gh/
 # 扫描
 & "$Skill\start.bat" powershell -NoProfile -ExecutionPolicy Bypass -File "$Skill\scripts\scan-secrets.ps1" -Worktree
 & "$Skill\start.bat" powershell -NoProfile -ExecutionPolicy Bypass -File "$Skill\scripts\scan-secrets.ps1" -Staged
+& "$Skill\start.bat" powershell -NoProfile -ExecutionPolicy Bypass -File "$Skill\scripts\scan-secrets.ps1" -Tracked
 & "$Skill\start.bat" powershell -NoProfile -ExecutionPolicy Bypass -File "$Skill\scripts\scan-secrets.ps1" -Branch <branch>
 
 # 发布 notes
