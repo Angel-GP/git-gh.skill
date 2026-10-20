@@ -1,0 +1,10 @@
+# Runtime credentials and SSH material: never commit
+home/*
+!home/.gitignore
+!home/README.txt
+
+# Local archives, logs and OS junk
+*.log
+*.zip
+.DS_Store
+Thumbs.db

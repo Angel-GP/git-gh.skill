@@ -155,14 +155,40 @@ function Unquote-GitPath {
     return $p
 }
 
+function Get-SkillPrefixInRepo {
+    param([string]$RepoRoot)
+    $repo = $RepoRoot.Replace('\', '/').TrimEnd('/')
+    $skill = (Get-GitSkillRoot).Replace('\', '/').TrimEnd('/')
+    if ($skill -ieq $repo) { return '' }
+    $prefix = $repo + '/'
+    if ($skill.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        return $skill.Substring($prefix.Length).Trim('/')
+    }
+    return $null
+}
+
 function Test-ExcludedPath {
-    param([string]$RelativePath)
+    param([string]$RelativePath, [string]$RepoRoot)
     $normalized = $RelativePath.Replace('\', '/')
-    $skillRoot = (Get-GitSkillRoot).Replace('\', '/').TrimEnd('/')
+    while ($normalized.StartsWith('./')) { $normalized = $normalized.Substring(2) }
+
+    if ([System.IO.Path]::IsPathRooted($RelativePath)) {
+        $repo = $RepoRoot.Replace('\', '/').TrimEnd('/')
+        $full = [System.IO.Path]::GetFullPath($RelativePath).Replace('\', '/')
+        if (-not $full.StartsWith($repo + '/', [System.StringComparison]::OrdinalIgnoreCase)) { return $true }
+        $normalized = $full.Substring($repo.Length + 1)
+    }
+
+    if ($normalized -eq '..' -or $normalized.StartsWith('../') -or $normalized.Contains('/../')) { return $true }
     if ($normalized -match '(^|/)\.git/' -or $normalized -match '(^|/)node_modules/') { return $true }
-    if ($normalized.StartsWith($skillRoot + '/tools/git/')) { return $true }
-    if ($normalized.StartsWith($skillRoot + '/tools/gh/')) { return $true }
-    if ($normalized.StartsWith($skillRoot + '/home/')) { return $true }
+
+    $prefix = Get-SkillPrefixInRepo -RepoRoot $RepoRoot
+    if ($null -ne $prefix) {
+        $p = if ($prefix) { $prefix + '/' } else { '' }
+        if ($normalized.StartsWith($p + 'tools/git/', [System.StringComparison]::OrdinalIgnoreCase)) { return $true }
+        if ($normalized.StartsWith($p + 'tools/gh/', [System.StringComparison]::OrdinalIgnoreCase)) { return $true }
+        if ($normalized.StartsWith($p + 'home/', [System.StringComparison]::OrdinalIgnoreCase)) { return $true }
+    }
     return $false
 }
 
@@ -313,8 +339,15 @@ try {
             $files = Get-WorktreeFiles -RepoRoot $repoRoot
         }
 
-        foreach ($file in ($files | Select-Object -Unique)) {
-            if (Test-ExcludedPath $file) { continue }
+        $uniqueFiles = @($files | Select-Object -Unique)
+        $total = $uniqueFiles.Count
+        $index = 0
+        foreach ($file in $uniqueFiles) {
+            $index++
+            if (Test-ExcludedPath -RelativePath $file -RepoRoot $repoRoot) { continue }
+            if (-not $Json -and $total -gt 200 -and ($index % 200 -eq 0)) {
+                Write-Host "  progress: $index/$total files" -ForegroundColor DarkGray
+            }
             Test-SensitiveFileName -Path $file
             if ($mode -eq 'Staged') { Scan-StagedFile -RelativePath $file -RepoRoot $repoRoot }
             else { Scan-WorktreeFile -RelativePath $file -RepoRoot $repoRoot }
