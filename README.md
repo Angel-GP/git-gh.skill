@@ -170,4 +170,15 @@ Remove-Item -Recurse -Force "$env:DSH_HOME\skills\git-gh"
 
 如果目录内有 `home\` 凭据，删除前确认不再需要。
 
+## License
+
+Original git-gh code and documentation are licensed under the **MIT License**. See `LICENSE`.
+
+Bundled third-party tools keep their own licenses:
+
+- Git for Windows: **GPL-2.0**
+- GitHub CLI: **MIT**
+
+See `THIRD_PARTY_NOTICES.md` for details and source links.
+
 内置工具版本与许可证见 `tools\VERSIONS.txt` 和 `THIRD_PARTY_NOTICES.md`。
