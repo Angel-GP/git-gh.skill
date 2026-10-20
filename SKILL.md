@@ -124,10 +124,22 @@ Agent 必须把输出中的公钥行（`ssh-ed25519 ...`）原样贴到对话里
 ### 3.1 选择顺序
 
 1. 检查 skill 内部密钥（只看文件名，不读内容）：`home\.ssh\id_ed25519`、`id_rsa` 等是否存在；检查 `ssh-add -l` 是否有可用身份。
-2. 有内部密钥或 ssh-agent，且用户对仓库有写权限：优先 SSH。
-3. 无密钥、仅拉取他人的公开仓库、或用户明确要求 HTTPS：使用 HTTPS。
+2. 有内部密钥或 ssh-agent，且仓库属于用户、或用户确认有访问权限：优先 SSH。
+3. 无密钥、他人的公开仓库、或用户明确要求 HTTPS：默认 HTTPS。
 4. 不在全局用户目录搜索密钥；不把全局密钥复制进 skill；不打印密钥内容。
 5. 用户明确给出外部密钥路径时，先展示 `GIT_SSH_COMMAND=ssh -i <path>` 的完整命令、影响和风险，征得同意后才使用；不得自行扫描全局 `.ssh`。
+
+**SSH 不是匿名协议。** `git@github.com:...` 会先以某个 GitHub 账号认证，再由该账号的权限决定能否读取。因此：
+
+| 场景 | 建议 |
+|---|---|
+| 自己的仓库，内部密钥/agent 可用 | SSH |
+| 他人的公开仓库，只读 | HTTPS（无需密钥，最稳） |
+| 他人的公开仓库，坚持用 SSH | 密钥必须已加入你的 GitHub 账号，且不能是只绑定单个仓库的 deploy key |
+| 他人的私有仓库 | 必须先是 collaborator；SSH 不能绕过权限 |
+| 权限未知 | 先询问用户，不猜 |
+
+如果 SSH 拉取他人仓库失败，先判断是“密钥未加入 GitHub / deploy key 作用域限制 / 无 collaborator 权限”，不要反复重试或强制切换；按第 9 节停止并给出诊断。
 
 SSH 地址格式：`git@github.com:<owner>/<repo>.git`
 HTTPS 地址格式：`https://github.com/<owner>/<repo>.git`
@@ -527,7 +539,7 @@ home/gh/
 - 未执行任何自动合并/强推；请选择处理方式。
 ```
 
-所有输出（包括错误、路径、URL、日志）都要脱敏：Token → `***`，`https://user:pass@host` → `https://***:***@host`，私钥块 → `***PRIVATE KEY REDACTED***`。
+所有输出（包括错误、路径、URL、日志）都要脱敏：Token → `***`，`https://<userinfo>@host` → `https://***@host`，私钥块 → `***PRIVATE KEY REDACTED***`。
 
 ## 12. 辅助脚本
 

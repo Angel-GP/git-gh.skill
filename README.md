@@ -32,6 +32,20 @@ git-gh/
 
 ## 安装
 
+### Agent 一句话安装
+
+对 agent 说：**“把 `https://github.com/Angel-GP/git-gh.skill.git` 克隆到 `$env:DSH_HOME\skills\git-gh`（未设置时 `$HOME\.dsh\skills\git-gh`），然后运行 `start.bat --bootstrap`。”**
+
+等价的 PowerShell 命令：
+
+```powershell
+$dst = if ($env:DSH_HOME) { Join-Path $env:DSH_HOME 'skills\git-gh' } else { Join-Path $HOME '.dsh\skills\git-gh' }
+git clone https://github.com/Angel-GP/git-gh.skill.git $dst
+& "$dst\start.bat" --bootstrap
+```
+
+默认用 HTTPS，是因为它不需要预先配置 SSH 密钥，别人拿到就能装。只有在已经配置好 GitHub SSH key、或仓库是私有且你使用 SSH 认证时，才把地址换成 `git@github.com:Angel-GP/git-gh.skill.git`。
+
 ### 方式 A：用户级安装（推荐）
 
 ```powershell
@@ -75,6 +89,33 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
 所有命令都必须经过 `start.bat`。直接运行系统 `git` / `gh` 会绕过隔离环境，技能规则禁止这样做。
+
+### 拉取别人的仓库
+
+SSH 不是匿名协议：`git@github.com:...` 会先以你的 GitHub 账号认证，再由账号权限决定能否读取。
+
+| 场景 | 建议 |
+|---|---|
+| 自己的仓库 | 优先 SSH |
+| 他人的公开仓库，只读 | HTTPS，无需密钥 |
+| 他人的公开仓库，坚持 SSH | 密钥必须已加入你的 GitHub 账号，且不能是只绑定单个仓库的 deploy key |
+| 他人的私有仓库 | 必须先是 collaborator；SSH 不能绕过权限 |
+| 权限未知 | 先询问，不猜 |
+
+公开仓库示例：
+
+```powershell
+& ".\start.bat" git clone https://github.com/owner/repo.git
+```
+
+如果 SSH 拉取非自己仓库失败，先检查：
+
+```powershell
+& ".\start.bat" ssh -T git@github.com
+& ".\start.bat" powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\setup-auth.ps1" -Mode Check
+```
+
+确认公钥已添加到**你自己的 GitHub 账号**，而不是只作为某个仓库的 deploy key。没有权限的私有仓库，SSH 和 HTTPS 都无法拉取，需要仓库管理员授权。
 
 ## 分享给他人 / 首次添加密钥
 
