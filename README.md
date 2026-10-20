@@ -61,7 +61,18 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Force
 
 ## 首次认证
 
+首次加载 skill 时，Agent 会自动执行 `start.bat --bootstrap`：
+
+- 检查 `home\.ssh` 是否已有密钥；
+- 没有则自动生成专用 ed25519 密钥；
+- 把**公钥**和指纹输出到对话，供你复制并上传到 GitHub；
+- 私钥只保存在 `home\.ssh\id_ed25519`，不会打印、不会上传。
+
+你只需要把公钥添加到 <https://github.com/settings/ssh/new>。
+
 ### SSH（推荐）
+
+如果自动流程没有完成，或你想手动重新生成：
 
 ```powershell
 # 生成专用密钥，会提示设置口令；直接回车表示不设口令
