@@ -449,7 +449,27 @@ tag 固定 `vX.Y.Z`；不使用 `v1.2`、`1.2.3`、`release-1.2.3`。
 & "$Skill\start.bat" git push origin vX.Y.Z
 ```
 
-### 8.5 创建 GitHub Release（L2，需同意）
+### 8.5 打包 zip（GitHub Actions，tag 触发）
+
+推送 `vX.Y.Z` tag 后，`.github/workflows/package.yml` 会自动：
+
+- checkout 该 tag
+- 打包 `git-gh-vX.Y.Z.zip`（排除 `.git` 和 `home`）
+- 生成 `.sha256` 校验文件
+- 上传为 Actions artifact
+
+检查运行：
+
+```powershell
+& "$Skill\start.bat" gh run list --workflow package.yml --limit 5
+& "$Skill\start.bat" gh run view <run-id>
+```
+
+artifact 在 Actions run 页面下载。打包由 Actions 完成，不需要本地 zip，也不需要本地 gh 登录。
+
+注意：`git push` tag 只会触发 Actions，不会直接创建 GitHub Release；Release 是 GitHub API 对象。
+
+### 8.6 创建 GitHub Release（L2，需同意）
 
 仅 GitHub 仓库可用：
 

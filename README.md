@@ -59,6 +59,18 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Force
 
 所有 git/gh 命令都必须经过 `start.bat`。直接运行系统 `git` / `gh` 会绕过隔离环境。
 
+## 打包
+
+推送 `vX.Y.Z` tag 会触发 `.github/workflows/package.yml`：
+
+- 打包 `git-gh-vX.Y.Z.zip`，自动排除 `.git` 和 `home`
+- 生成 `.sha256` 校验文件
+- 上传为 GitHub Actions artifact
+
+在 Actions run 页面下载即可，不需要本地打包，也不需要本地 gh 登录。
+
+`git push` tag 只触发打包，不会自动创建 GitHub Release；Release 是 GitHub API 对象，需要 gh 或网页操作。
+
 ## 首次认证
 
 首次加载 skill 时，Agent 会自动执行 `start.bat --bootstrap`：

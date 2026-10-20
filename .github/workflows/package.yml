@@ -1,0 +1,58 @@
+name: package
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version label for the zip'
+        required: true
+        default: 'v1.0.0'
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    env:
+      PACKAGE_VERSION: ${{ github.event.inputs.version || github.ref_name }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.version || github.ref }}
+          fetch-depth: 0
+
+      - name: Build zip
+        shell: pwsh
+        run: |
+          $stage = Join-Path $env:RUNNER_TEMP 'git-gh'
+          if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
+          New-Item -ItemType Directory -Path $stage | Out-Null
+          robocopy . $stage /E /XD .git home /XF *.log | Out-Null
+          if ($LASTEXITCODE -ge 8) { throw "robocopy failed with exit code $LASTEXITCODE" }
+
+          $zip = "git-gh-$env:PACKAGE_VERSION.zip"
+          if (Test-Path $zip) { Remove-Item $zip -Force }
+          & tar.exe -a -c -f $zip -C $env:RUNNER_TEMP 'git-gh'
+          if ($LASTEXITCODE -ne 0) {
+            Compress-Archive -Path $stage -DestinationPath $zip -CompressionLevel Optimal -Force
+          }
+
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+          "$hash  $zip" | Set-Content "$zip.sha256" -Encoding ascii
+          Write-Host "Created $zip ($((Get-Item $zip).Length) bytes), SHA256 $hash"
+
+      - name: Upload zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: git-gh-${{ env.PACKAGE_VERSION }}
+          path: |
+            git-gh-*.zip
+            git-gh-*.zip.sha256
+          if-no-files-found: error
